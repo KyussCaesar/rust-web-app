@@ -9,5 +9,6 @@ edition = "2021"
 actix-web = "4"
 actix-web-prom = "0.6.0"
 chrono = "0.4.20"
+prometheus = { version = "0.13.1", features = ["process"] }
 rust-web-app-client = { version = "0.0.0", path = "client" }
 uuid = "1.1.2"

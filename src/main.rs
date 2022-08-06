@@ -1,6 +1,7 @@
 use actix_web::{HttpServer, web, middleware, App, Responder, Result, error, http::StatusCode};
 use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
 use chrono::Utc;
+use prometheus::process_collector::ProcessCollector;
 
 use rust_web_app_client::models::IUserDto;
 
@@ -66,6 +67,9 @@ async fn main() -> std::io::Result<()> {
       .endpoint("/metrics")
       .build()
       .unwrap();
+
+    let process_collector = ProcessCollector::for_self();
+    prometheus.registry.register(Box::new(process_collector)).expect("unable to register the process collector");
 
     HttpServer::new(move || {
         App::new()

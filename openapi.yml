@@ -29,7 +29,7 @@ paths:
         '200':
           description: OK
           content:
-            text/plain:
+            application/openmetrics-text:
               schema:
                 type: string
   /user:
