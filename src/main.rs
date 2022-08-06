@@ -1,9 +1,13 @@
-use actix_web::{HttpServer, web, middleware, App, Responder, Result, error, http::StatusCode};
+use actix_web::{HttpRequest, HttpResponse, HttpServer, web, middleware, App, Responder, Result, error, http::StatusCode};
 use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
 use chrono::Utc;
 use prometheus::process_collector::ProcessCollector;
 
 use rust_web_app_client::models::IUserDto;
+
+async fn healthcheck_get() -> impl Responder {
+  HttpResponse::Ok()
+}
 
 async fn user_put(user_dto: web::Json<IUserDto>) -> Result<impl Responder> {
   let mut response_user = IUserDto::new();
@@ -74,10 +78,26 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(middleware::Compress::default())
+            .route("/healthcheck", web::get().to(healthcheck_get))
             .wrap(prometheus.clone())
             .route("/user", web::put().to(user_put))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
     .await
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use actix_web::{
+    test,
+  };
+
+  #[actix_web::test]
+  async fn test_healthcheck() {
+    let req = test::TestRequest::default().to_http_request();
+    let resp = healthcheck_get().await.respond_to(&req);
+    assert_eq!(resp.status(), StatusCode::OK);
+  }
 }
