@@ -15,7 +15,7 @@ async fn main() -> Result<(), rust_web_app_client::apis::Error<user_api::UserPut
     dto
   };
 
-  let response = user_api::user_put(&configuration, user_dto).await?;
+  let response = user_api::user_put(&configuration, user_dto).await;
   println!("response: {:?}", response);
   Ok(())
 }

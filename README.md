@@ -21,8 +21,6 @@ asdf install # install from .tool-versions
 npm install # install from package.json, for openapi-generator-cli
 ```
 
-`Makefile` contains command to build the client: `make client`
-
 # API Client Generation
 
 For testing the application it is good to use client generated from the API spec
@@ -36,3 +34,5 @@ https://openapi-generator.tech/docs/generators/rust
 
 if you need to customise it later, refer to those docs and put the values into
 openapitools.json
+
+you can view docs for the crate and all dependencies with `make serve-docs`.

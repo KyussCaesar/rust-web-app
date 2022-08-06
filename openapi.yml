@@ -1,9 +1,9 @@
 openapi: 3.0.0
 info:
-  description: |
-    Rust Web App API
   version: 0.0.0
-  title: Rust Web App OpenAPI
+  description: |
+    Rust Web App
+  title: Rust Web App
 tags:
   - name: user
     description: CRUD Users.
@@ -12,7 +12,16 @@ paths:
     put:
       tags: [user]
       operationId: userPut
-      summary: upsert user
+      summary: Upsert user
+      description: |
+        Upsert user information.
+        If `user.id` is absent from the payload, creates a new user. Otherwise, update existing user information.
+
+        Return:
+        - 201: user was created
+        - 200: user was updated successfully
+        - 400: missing some information required to create user
+        - 404: user ID in request does not refer to a known user
       requestBody:
         required: true
         content:
@@ -26,9 +35,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IUserDTO'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IUserDTO'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
     get:
       tags: [user]
-      summary: get user
+      summary: Get user
+      description: |
+        Return user information by ID.
       operationId: userGet
       parameters:
         - in: query
@@ -37,6 +58,7 @@ paths:
             type: string
             format: uuid
           description: the ID of the user to get.
+          required: true
       responses:
         '200':
           description: OK
@@ -48,7 +70,9 @@ paths:
           description: Not Found
     delete:
       tags: [user]
-      summary: delete user
+      summary: Delete user
+      description: |
+        Delete user information by ID.
       operationId: userDelete
       parameters:
         - in: query
@@ -57,9 +81,14 @@ paths:
             type: string
             format: uuid
           description: The ID of the user to delete.
+          required: true
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IUserDTO'
 
 components:
   schemas:
@@ -69,17 +98,26 @@ components:
         id:
           type: string
           format: uuid
+          description: |
+            User ID
         username:
           type: string
+          description: |
+            Username (required for creation).
         email:
           type: string
           format: email
+          description: |
+            User email address (required for creation).
         createdAt:
           type: string
           format: date-time
+          description: DB-managed, ignored during create/update.
         updatedAt:
           type: string
           format: date-time
+          description: DB-managed, ignored during create/update.
         deletedAt:
           type: string
           format: date-time
+          description: DB-managed, ignored during create/update.
