@@ -1,7 +1,7 @@
 .PHONY: client clean
 
-client: openapi.yml
-	npx @openapitools/openapi-generator-cli generate -i $< -g rust -o $@
+client:
+	npx @openapitools/openapi-generator-cli generate --generator-key rust
 
 clean:
 	rm -rf client
