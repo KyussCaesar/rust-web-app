@@ -1,4 +1,5 @@
 use actix_web::{HttpServer, web, middleware, App, Responder, Result, error, http::StatusCode};
+use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
 use chrono::Utc;
 
 use rust_web_app_client::models::IUserDto;
@@ -61,9 +62,15 @@ async fn user_put(user_dto: web::Json<IUserDto>) -> Result<impl Responder> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let prometheus = PrometheusMetricsBuilder::new("api")
+      .endpoint("/metrics")
+      .build()
+      .unwrap();
+
+    HttpServer::new(move || {
         App::new()
             .wrap(middleware::Compress::default())
+            .wrap(prometheus.clone())
             .route("/user", web::put().to(user_put))
     })
     .bind(("127.0.0.1", 8080))?

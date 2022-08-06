@@ -7,7 +7,31 @@ info:
 tags:
   - name: user
     description: CRUD Users.
+  - name: monitoring
+    description: Monitoring
 paths:
+  /healthcheck:
+    get:
+      tags: [monitoring]
+      operationId: healthcheckGet
+      description: |
+        Return 200 OK if the application is up.
+      responses:
+        '200':
+          description: OK
+  /metrics:
+    get:
+      tags: [monitoring]
+      operationId: metricsGet
+      description: |
+        Return Prometheus metrics.
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
   /user:
     put:
       tags: [user]
