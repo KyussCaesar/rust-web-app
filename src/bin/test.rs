@@ -10,8 +10,8 @@ async fn main() -> Result<(), rust_web_app_client::apis::Error<user_api::UserPut
 
   let user_dto = {
     let mut dto = IUserDto::new();
-    dto.username.insert("test username".into());
-    dto.email.insert("test email".into());
+    dto.username = Some("test username".into());
+    dto.email = Some("test email".into());
     dto
   };
 
