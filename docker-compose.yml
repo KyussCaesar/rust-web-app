@@ -1,9 +1,62 @@
 version: "3.9"
 
 services:
-  service:
+  rust-web-app:
+    image: rust-web-app/service:latest
     build:
       context: .
+    ports:
+      - 8080:8080
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8080/healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
 
-  database:
-    image: postgres
+  rust-web-app-docs:
+    image: python:3.10-slim-bullseye
+    ports:
+      - 7979:8000
+    environment:
+      PYTHONUNBUFFERED: "1"
+    command:
+      - python
+      - -m
+      - http.server
+      - --directory
+      - /opt/rust-web-app/doc
+    volumes:
+      - ./target/doc:/opt/rust-web-app/doc:ro
+
+  postgres:
+    image: postgres:14-bullseye
+    environment:
+      POSTGRES_PASSWORD: antonytest
+      POSTGRES_USER: rust-web-app
+      POSTGRES_DB: rust-web-app
+
+  adminer:
+    image: adminer:4-standalone
+    ports:
+      - 8081:8080
+
+  prometheus:
+    image: rust-web-app/prometheus:latest
+    build:
+      context: .
+      dockerfile: prometheus.Dockerfile
+    ports:
+      - 9090:9090
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:latest
+    environment:
+      DATA_SOURCE_NAME: postgresql://rust-web-app:antonytest@postgres:5432/rust-web-app?sslmode=disable

@@ -1,4 +1,4 @@
-use rust_web_app_client::{apis::configuration::Configuration, apis::user_api, models::IUserDto};
+use rust_web_app_client::{apis::configuration::Configuration, apis::{user_api, monitoring_api}, models::IUserDto};
 
 #[actix_web::main]
 async fn main() -> Result<(), rust_web_app_client::apis::Error<user_api::UserPutError>> {
@@ -8,14 +8,26 @@ async fn main() -> Result<(), rust_web_app_client::apis::Error<user_api::UserPut
     config
   };
 
-  let user_dto = {
-    let mut dto = IUserDto::new();
-    dto.username = Some("test username".into());
-    dto.email = Some("test email".into());
-    dto
-  };
+  let healthcheck = monitoring_api::healthcheck_get(&configuration).await;
+  println!("healthcheck: {:?}", healthcheck);
 
-  let response = user_api::user_put(&configuration, user_dto).await;
+  let mut user_dto = IUserDto::new();
+  user_dto.username = Some("test username".into());
+  user_dto.email = Some("test email".into());
+
+  let response = user_api::user_put(&configuration, user_dto.clone()).await;
   println!("response: {:?}", response);
+
+  user_dto.id = response.unwrap().id;
+
+  user_dto.email = Some("new email".into());
+  let response = user_api::user_put(&configuration, user_dto.clone()).await;
+  println!("response: {:?}", response);
+
+  // does not work, bug in the generated client
+  // the client *always* tries to deserialise as JSON even though the response type is text/*
+  // let metrics = monitoring_api::metrics_get(&configuration).await;
+  // println!("metrics: {:?}", metrics);
+
   Ok(())
 }

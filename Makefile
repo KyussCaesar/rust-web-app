@@ -2,6 +2,12 @@
 
 all:
 
+up:
+	$(MAKE) client
+	cargo build
+	cargo doc
+	docker-compose up --build
+
 serve-docs:
 	cargo doc
 	@echo 'navigate to http://localhost:8000/rust_web_app/index.html'
@@ -9,6 +15,7 @@ serve-docs:
 	python -m http.server --directory target/doc
 
 client:
+	rm -rf $@
 	npx @openapitools/openapi-generator-cli generate --generator-key rust
 
 clean:

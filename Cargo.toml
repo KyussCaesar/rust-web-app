@@ -10,6 +10,7 @@ actix-web = "4"
 actix-web-prom = "0.6.0"
 chrono = "0.4.20"
 deadpool-postgres = "0.10.2"
+indoc = "1.0.7"
 prometheus = { version = "0.13.1", features = ["process"] }
 rust-web-app-client = { version = "0.0.0", path = "client" }
 tokio-pg-mapper = "0.2.0"

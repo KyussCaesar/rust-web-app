@@ -1,2 +1,5 @@
 *
 !target/release/rust-web-app
+!target/debug/rust-web-app
+!prometheus.yml
+!target/doc

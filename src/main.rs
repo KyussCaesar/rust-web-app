@@ -1,3 +1,5 @@
+use std::time::{Instant, Duration};
+
 use actix_web::{
   error, http::StatusCode, middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
   Result,
@@ -10,6 +12,8 @@ use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::NoTls;
 use uuid::Uuid;
+use actix_web::rt::time::sleep;
+use indoc::indoc;
 
 use rust_web_app_client::models::IUserDto;
 
@@ -46,13 +50,18 @@ async fn user_put(user_dto: web::Json<IUserDto>, pool: web::Data<Pool>) -> Resul
   let response_user: IUserDto;
   let response_status: StatusCode;
 
-  let db: Client = pool.get().await.map_err(|e| {
+  let mut db: Client = pool.get().await.map_err(|e| {
     println!("uh oh: unable to get connection from pool: {}", e);
     error::ErrorInternalServerError("unable to handle request")
   })?;
 
   if let Some(user_id) = &user_dto.id {
     println!("request is to update userId={}", user_id);
+    let db = db.transaction().await.map_err(|e| {
+      println!("uh oh: error when trying to begin transaction: {}", e);
+      error::ErrorInternalServerError("unable to handle request")
+    })?;
+
     let mut existing_user = {
       let user_id = Uuid::parse_str(&user_id).map_err(|e| {
         println!("uh oh: unable to update user information: unable to parse user UUID: {}", e);
@@ -111,6 +120,11 @@ async fn user_put(user_dto: web::Json<IUserDto>, pool: web::Data<Pool>) -> Resul
           },
         }
       })?;
+
+    db.commit().await.map_err(|e| {
+      println!("uh oh: error when trying to commit transaction: {}", e);
+      error::ErrorInternalServerError("unable to handle request")
+    })?;
 
     response_user = updated_user.into();
     response_status = StatusCode::OK;
@@ -175,26 +189,73 @@ async fn main() -> std::io::Result<()> {
     let mut config = deadpool_postgres::Config::default();
     config.dbname = Some("rust-web-app".into());
     config.user = Some("rust-web-app".into());
+    config.password = Some("antonytest".into());
     config.application_name = Some("rust-web-app".into());
     config.host = Some("postgres".into());
-    config.port = Some(4321);
+    config.port = Some(5432);
 
     config
       .create_pool(None, NoTls)
       .expect("unable to create DB pool")
   };
 
-  HttpServer::new(move || {
-    App::new()
-      .app_data(web::Data::new(pool.clone()))
-      .wrap(middleware::Compress::default())
-      .route("/healthcheck", web::get().to(healthcheck_get))
-      .wrap(prometheus.clone())
-      .route("/user", web::put().to(user_put))
-  })
-  .bind(("127.0.0.1", 8080))?
-  .run()
-  .await
+  // wait for the DB to start accepting connections
+  let started_waiting = Instant::now();
+  let db_waiting_timeout = Duration::from_secs(10);
+  let db = loop {
+    match pool.get().await {
+      Ok(db) => break db,
+      Err(e) => {
+        if (Instant::now() - started_waiting) > db_waiting_timeout {
+          panic!("uh oh: timeout waiting for DB to accept connection: {}", e);
+        } else {
+          println!("still waiting for DB to start accepting connections: {}", e);
+          sleep(Duration::from_secs(1)).await;
+        }
+      }
+    };
+  };
+
+  let migrations = &[
+    indoc! {"
+    DROP TABLE IF EXISTS users;
+    "},
+    indoc! {"
+    DROP TABLE IF EXISTS \"user\";
+    "},
+    indoc! {"
+    CREATE TABLE IF NOT EXISTS \"user\"(
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+    , username TEXT NOT NULL
+    , email TEXT NOT NULL
+    , created_at TIMESTAMP WITH TIME ZONE NOT NULL
+    , updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+    , deleted_at TIMESTAMP WITH TIME ZONE
+    );
+    "},
+  ];
+
+  for m in migrations {
+    println!("migrate: {}", m);
+    db.query(*m, &[]).await.map_err(|e| {
+      println!("uh oh: error during migration: {}", e);
+      std::io::Error::new(std::io::ErrorKind::Other, e)
+    })?;
+  }
+
+  let server = 
+    HttpServer::new(move || {
+      App::new()
+        .app_data(web::Data::new(pool.clone()))
+        .route("/healthcheck", web::get().to(healthcheck_get))
+        .wrap(prometheus.clone())
+        .route("/user", web::put().to(user_put))
+        .wrap(middleware::Compress::default())
+    })
+    .bind(("0.0.0.0", 8080))?;
+
+  println!("setup complete, spinning...");
+  server.run().await
 }
 
 #[cfg(test)]
