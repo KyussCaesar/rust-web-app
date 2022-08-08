@@ -1,4 +1,8 @@
-use rust_web_app_client::{apis::configuration::Configuration, apis::{user_api, monitoring_api}, models::IUserDto};
+use rust_web_app_client::{
+  apis::configuration::Configuration,
+  apis::{monitoring_api, user_api},
+  models::IUserDto,
+};
 
 #[actix_web::main]
 async fn main() -> Result<(), rust_web_app_client::apis::Error<user_api::UserPutError>> {

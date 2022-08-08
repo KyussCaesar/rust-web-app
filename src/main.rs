@@ -1,19 +1,20 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
+use actix_web::rt::time::sleep;
 use actix_web::{
-  error, http::StatusCode, middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
-  Result,
+  delete, error, get, http::StatusCode, middleware, put, web, App, HttpResponse, HttpServer,
+  Responder, Result,
 };
-use actix_web_prom::{PrometheusMetrics, PrometheusMetricsBuilder};
+use actix_web_prom::PrometheusMetricsBuilder;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{self, Client, Pool};
+use indoc::indoc;
 use prometheus::process_collector::ProcessCollector;
+use serde::Deserialize;
 use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::NoTls;
 use uuid::Uuid;
-use actix_web::rt::time::sleep;
-use indoc::indoc;
 
 use rust_web_app_client::models::IUserDto;
 
@@ -46,6 +47,7 @@ async fn healthcheck_get() -> impl Responder {
   HttpResponse::Ok()
 }
 
+#[put("/user")]
 async fn user_put(user_dto: web::Json<IUserDto>, pool: web::Data<Pool>) -> Result<impl Responder> {
   let response_user: IUserDto;
   let response_status: StatusCode;
@@ -172,6 +174,34 @@ async fn user_put(user_dto: web::Json<IUserDto>, pool: web::Data<Pool>) -> Resul
   Ok(response)
 }
 
+#[derive(Deserialize)]
+struct UserGetQuery {
+  user_id: String,
+}
+
+/// TODO
+#[get("/user")]
+async fn user_get(
+  user_id: web::Query<UserGetQuery>,
+  pool: web::Data<Pool>,
+) -> Result<impl Responder> {
+  Ok(HttpResponse::InternalServerError())
+}
+
+#[derive(Deserialize)]
+struct UserDeleteQuery {
+  user_id: String,
+}
+
+/// TODO
+#[delete("/user")]
+async fn user_delete(
+  user_id: web::Query<UserDeleteQuery>,
+  pool: web::Data<Pool>,
+) -> Result<impl Responder> {
+  Ok(HttpResponse::InternalServerError())
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
   let prometheus = PrometheusMetricsBuilder::new("api")
@@ -216,14 +246,7 @@ async fn main() -> std::io::Result<()> {
     };
   };
 
-  let migrations = &[
-    indoc! {"
-    DROP TABLE IF EXISTS users;
-    "},
-    indoc! {"
-    DROP TABLE IF EXISTS \"user\";
-    "},
-    indoc! {"
+  let migrations = &[indoc! {"
     CREATE TABLE IF NOT EXISTS \"user\"(
       id UUID PRIMARY KEY DEFAULT gen_random_uuid()
     , username TEXT NOT NULL
@@ -232,8 +255,7 @@ async fn main() -> std::io::Result<()> {
     , updated_at TIMESTAMP WITH TIME ZONE NOT NULL
     , deleted_at TIMESTAMP WITH TIME ZONE
     );
-    "},
-  ];
+    "}];
 
   for m in migrations {
     println!("migrate: {}", m);
@@ -243,16 +265,17 @@ async fn main() -> std::io::Result<()> {
     })?;
   }
 
-  let server = 
-    HttpServer::new(move || {
-      App::new()
-        .app_data(web::Data::new(pool.clone()))
-        .route("/healthcheck", web::get().to(healthcheck_get))
-        .wrap(prometheus.clone())
-        .route("/user", web::put().to(user_put))
-        .wrap(middleware::Compress::default())
-    })
-    .bind(("0.0.0.0", 8080))?;
+  let server = HttpServer::new(move || {
+    App::new()
+      .app_data(web::Data::new(pool.clone()))
+      .route("/healthcheck", web::get().to(healthcheck_get))
+      .wrap(prometheus.clone())
+      .service(user_put)
+      .service(user_get)
+      .service(user_delete)
+      .wrap(middleware::Compress::default())
+  })
+  .bind(("0.0.0.0", 8080))?;
 
   println!("setup complete, spinning...");
   server.run().await

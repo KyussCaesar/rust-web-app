@@ -13,6 +13,7 @@ deadpool-postgres = "0.10.2"
 indoc = "1.0.7"
 prometheus = { version = "0.13.1", features = ["process"] }
 rust-web-app-client = { version = "0.0.0", path = "client" }
+serde = { version = "1.0.142", features = ["serde_derive"] }
 tokio-pg-mapper = "0.2.0"
 tokio-pg-mapper-derive = "0.2.0"
 tokio-postgres = { version = "0.7.6", features = ["with-uuid-1", "with-chrono-0_4"] }
