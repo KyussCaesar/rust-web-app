@@ -60,3 +60,8 @@ services:
     image: quay.io/prometheuscommunity/postgres-exporter:latest
     environment:
       DATA_SOURCE_NAME: postgresql://rust-web-app:antonytest@postgres:5432/rust-web-app?sslmode=disable
+
+  grafana:
+    image: grafana/grafana-oss
+    ports:
+      - 3000:3000
